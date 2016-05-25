@@ -1,0 +1,17 @@
+{
+  "name": "PlexUpload",
+  "version": "0.0.1",
+  "dependencies": {
+    "express": "4.13.3",
+    "multer": "1.1.0",
+    "request": "latest",
+    "xml2js": "latest",
+    "path": "latest",
+    "body-parser": "latest"
+  },
+  "devDependencies": {
+    "should": "~7.1.0",
+    "mocha": "~2.3.3",
+    "supertest": "~1.1.0"
+  }
+}
