@@ -57,7 +57,7 @@ $(document).ready(function(){
         var row="odd";
         if(rowCount %2 ==0) row ="even";
         this.rowNumber=rowCount;
-        this.statusbar = $("<div class='row' id='"+rowCount+"'></div>").appendTo(obj);
+        this.statusbar = $("<div class='row' id='"+rowCount+"'></div>");
         
         this.imageDiv = $('<div class="col-md-3"></div>').appendTo(this.statusbar);
         this.imageHref = $('<a href="#" class="thumbnail" style="width:140px;height:205"></a>').appendTo(this.imageDiv);
@@ -77,7 +77,9 @@ $(document).ready(function(){
         this.statusHeader = $('<h2></h2>').appendTo(this.statusDiv);
         this.statusLabel = $('<span class="label label-default">Checking...</span>').appendTo(this.statusHeader);
         
-        this.pendingFileEntry = $('<li class="list-group-item"></li>').appendTo($('#pendingFilesList'));
+        this.pendingFileEntry = $('<li class="list-group-item"></li>').appendTo($('#pendingFilesList')).hide();
+        
+        this.filenameText = null;
         
         this.startUpload = function()
         {
@@ -124,10 +126,21 @@ $(document).ready(function(){
                 this.statusbar.appendTo($('#uploadFilesPanel'));
                 this.pendingFileEntry.hide();
             }
+            else if(cStatus == 'checking')
+            {
+                this.pendingFileEntry.hide();
+                this.statusbar.appendTo($('#dragandrophandler'));
+            }
+            else if(cStatus == 'pending')
+            {
+                this.pendingFileEntry.html(this.filenameText);
+                this.pendingFileEntry.show();
+            }
         }
 
         this.setFileNameSize = function(name, size)
         {
+            this.filenameText = name;
             var sizeStr="";
             var sizeKB = size/1024;
             
@@ -143,7 +156,6 @@ $(document).ready(function(){
 
             this.filename.html("Filename: " + name);
             this.size.html("Size: " + sizeStr);
-            this.pendingFileEntry.html(name);
         }
         
         this.setThumbnail = function(thumbLink) {
@@ -171,52 +183,67 @@ $(document).ready(function(){
         }
     }
     
-    function handleFileUpload(file, status, data)
+    function handleFileUpload(files, statusArr, i)
     {
-        status.setThumbnail(data.thumb);
-        if(data.status == 'EXIST')
+        if(i < statusArr.length)
         {
-            console.log("Movie " + data.name + " already exists.");
-            status.updateStatus('exist');
-            return false;
-        }
-        else
-        {
-            var fd = new FormData();
-            fd.append('media', file);
-            fd.append('title', data.title);
-            fd.append('name', data.name);
-            fd.append('year', data.year);
-            sendFileToServer(fd, status, function() { console.log('Upload Successful: ' + file.name); });
+            var file = files[i];
+            var status = statusArr[i];
+            var data = null;
+            
+            status.updateStatus('checking');
+            
+            var callNext = function() { 
+                console.log('Upload Successful: ' + file.name); 
+                handleFileUpload(files, statusArr, i + 1);
+            }
+            
+            $.ajax({
+                url: '/checkMovie',
+                method: "POST",
+                contentType: 'application/json',
+                data: JSON.stringify({name: file.name}),
+                success: function(info) {
+                    data = info;
+                    
+                    status.setThumbnail(data.thumb);
+                    if(data.status == 'EXIST')
+                    {
+                        console.log("Movie " + data.name + " already exists.");
+                        status.updateStatus('exist');
+                        callNext();
+                    }
+                    else
+                    {
+                        var fd = new FormData();
+                        fd.append('media', file);
+                        fd.append('title', data.title);
+                        fd.append('name', data.name);
+                        fd.append('year', data.year);
+                        sendFileToServer(fd, status, callNext);
+                    }
+                },
+                async: true
+            });
         }
     }
     
     function handleSequentialFileUploads(files, obj)
     {
-        if(files.length == 0 ) return;
+        if(files.length == 0) 
+            return;
+        
         var statusArr = [];
 
         for (var i = 0; i < files.length; i++) 
         {
             var status = new createStatusbar(obj); //Using this we can set progress.
             status.setFileNameSize(files[i].name, files[i].size);
-            
-            var f_handleFileUpload = handleFileUpload.bind(null, files[i], status);
-            
-            var mediaInfo = null;
-            $.ajax({
-                url: '/checkMovie',
-                method: "POST",
-                contentType: 'application/json',
-                data: JSON.stringify({name: files[i].name}),
-
-                success: f_handleFileUpload,
-                    
-                async: true
-            });
+            status.updateStatus('pending');
+            statusArr.push(status);
         }
 
-         //start first file upload
+        handleFileUpload(files, statusArr, 0);
     }
     
     var folderInit = function(e) {
