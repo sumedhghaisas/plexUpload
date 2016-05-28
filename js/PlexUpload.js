@@ -77,6 +77,8 @@ $(document).ready(function(){
         this.statusHeader = $('<h2></h2>').appendTo(this.statusDiv);
         this.statusLabel = $('<span class="label label-default">Checking...</span>').appendTo(this.statusHeader);
         
+        this.pendingFileEntry = $('<li class="list-group-item"></li>').appendTo($('#pendingFilesList'));
+        
         this.startUpload = function()
         {
             this.progress.show();
@@ -97,24 +99,30 @@ $(document).ready(function(){
                 this.statusLabel.html('EXIST');
                 this.statusLabel.removeClass();
                 this.statusLabel.addClass('label label-warning');
+                this.statusbar.detach().appendTo($('#existFilesPanel'));
+                this.pendingFileEntry.hide();
             }
             else if(cStatus == 'upload')
             {
                 this.statusLabel.html('Uploading...');
                 this.statusLabel.removeClass();
                 this.statusLabel.addClass('label label-primary');
+                this.pendingFileEntry.hide();
             }
             else if(cStatus == 'aborted')
             {
                 this.statusLabel.html('ABORTED');
                 this.statusLabel.removeClass();
                 this.statusLabel.addClass('label label-danger');
+                this.statusbar.appendTo($('#abortedFiles'));
             }
             else if(cStatus == 'uploaded')
             {
                 this.statusLabel.html('UPLOADED');
                 this.statusLabel.removeClass();
                 this.statusLabel.addClass('label label-success');
+                this.statusbar.appendTo($('#uploadFilesPanel'));
+                this.pendingFileEntry.hide();
             }
         }
 
@@ -135,6 +143,7 @@ $(document).ready(function(){
 
             this.filename.html("Filename: " + name);
             this.size.html("Size: " + sizeStr);
+            this.pendingFileEntry.html(name);
         }
         
         this.setThumbnail = function(thumbLink) {

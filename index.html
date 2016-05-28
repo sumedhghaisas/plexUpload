@@ -38,6 +38,48 @@ form { display: block; margin: 20px auto; background: #eee; border-radius: 10px;
   </div>
 </div>
 
+<!-- Nav tabs -->
+<ul class="nav nav-tabs" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" data-toggle="tab" href="#pendingFiles" role="tab">Pending Files</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" data-toggle="tab" href="#existFiles" role="tab">Exist</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" data-toggle="tab" href="#uploadFiles" role="tab">Upload</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" data-toggle="tab" href="#abortedFiles" role="tab">Aborted</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" data-toggle="tab" href="#unmatchedFiles" role="tab">Unmatched</a>
+  </li>
+</ul>
+
+<!-- Tab panes -->
+<div class="tab-content">
+  <div class="tab-pane active" id="pendingFiles" role="tabpanel">
+    <ul id="pendingFilesList" class="list-group">
+      
+    </ul>
+  </div>
+  <div class="tab-pane" id="existFiles" role="tabpanel">
+    <div class="panel panel-default">
+      <div class="panel-body" id="existFilesPanel">
+      </div>
+    </div>
+  </div>
+  <div class="tab-pane" id="uploadFiles" role="tabpanel">
+    <div class="panel panel-default">
+      <div class="panel-body" id="uploadFilesPanel">
+      </div>
+    </div>
+  </div>
+  <div class="tab-pane" id="abortedFiles" role="tabpanel">...</div>
+  <div class="tab-pane" id="unmatchedFiles" role="tabpanel">...</div>
+</div>
+
 </div>
 </body>
 </html>
