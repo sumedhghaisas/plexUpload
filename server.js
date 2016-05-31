@@ -135,7 +135,7 @@ function waitForMovieInLibrary(title, year, sectionKey)
     });
 }
 
-function waitForThumb(info, sectionKey)
+function waitForThumbAndYear(info, sectionKey)
 {
     return new Promise(function(resolve, reject) {
         if(info.thumb)
@@ -143,8 +143,8 @@ function waitForThumb(info, sectionKey)
         else 
         {
             var fun = function() {
-                checkMovieInLibrary(info.title, info.year, sectionKey).then(function(info) {
-                    if(info.thumb)
+                checkMovieInLibrary(info.title, info.year, sectionKey).then(function(res) {
+                    if(res.thumb != undefined && res.year != undefined)
                         resolve(info);
                     else 
                         setTimeout(fun, 500);
@@ -166,7 +166,7 @@ function checkTempMovie(tempMedia)
             info.status = 'EXIST';
         }
         else info = {name: pathUtils.basename(tempMedia.Media[0].Part[0].$.file), title: tempMedia.$.title, thumb: tempMedia.$.thumb, year: tempMedia.$.year, status: 'NEXIST'};
-        return waitForThumb(info, 5);
+        return waitForThumbAndYear(info, 5);
     }, function(error) {
         return new Promise(function(resolve, reject) { reject(error); });
     });
