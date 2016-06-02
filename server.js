@@ -2,23 +2,97 @@ var express =   require("express");
 var multer  =   require('multer');
 var app         =   express();
 var request = require('request');
-var xml2js = require('xml2js');
 var pathUtils = require('path');
 var fs = require('fs');
 var bodyParser = require('body-parser');
 var queryString = require('querystring');
 var util = require("util");
 var rmdir = require('rimraf');
+var q = require('q');
+var async = require('async');
 
-function copyFile(source, target) {
+var utils = require('./utils.js');
+
+var setupDeferred = q.defer();
+
+var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+console.log('Initializing ' + config.parallelUploadCount + ' temp libraries...');
+var tempLibraries = JSON.parse(fs.readFileSync('temp_libraries.json', 'utf8'));
+
+function createTempLibrary()
+{
     return new Promise(function(resolve, reject) {
-        var rd = fs.createReadStream(source);
-        rd.on('error', reject);
-        var wr = fs.createWriteStream(target);
-        wr.on('error', reject);
-        wr.on('finish', resolve);
-        rd.pipe(wr);
+        var timestamp = Date.now();
+        
+        var dir = __dirname + "/library_folders/lib_" + timestamp;
+        
+        console.log('Creating temp library: lib_' + timestamp + ' ...');
+        fs.mkdirSync(dir);
+        
+        var req = 'http://127.0.0.1:32400/library/sections?name=temp_' + timestamp + '&type=movie&agent=com.plexapp.agents.imdb&scanner=Plex%20Movie%20Scanner&language=en&importFromiTunes=&' + queryString.stringify({location: dir});
+        request.post({url:req}, function(error, response, body) {
+            if(error)
+                reject('Error while creating temp library: ' + error);
+            else 
+                resolve({xml: body, dir: dir});
+        });
+    }).then(function(res) {
+        return utils.xmlToJSON(res.xml).then(function(data) {
+            console.log('Successfully created temp library with key: ' + data.MediaContainer.Directory[0].$.key);
+            tempLibraries.push({key: data.MediaContainer.Directory[0].$.key, dir: res.dir});
+            return new Promise(function(resolve, reject) { resolve(); });
+        }, function(err) {
+            return new Promise(function(resolve, reject) { reject('Unable to process the response: ' + err); });
+        });
+    }, function(err) { 
+        return new Promise(function(resolve, reject) { reject(err); });
     });
+}
+
+function createTempLibraries(count)
+{
+    var funcs = [];
+    for(var i = 0;i < count - 1;i++)
+        funcs.push(createTempLibrary);
+    
+    var result = createTempLibrary();
+    funcs.forEach(function (f) {
+        result = result.then(f);
+    });
+    
+    return result;
+}
+
+
+if(tempLibraries.length < config.parallelUploadCount)
+{
+    createTempLibraries(config.parallelUploadCount - tempLibraries.length).then(function() {
+        fs.writeFileSync('temp_libraries.json', JSON.stringify(tempLibraries));
+        console.log('Starting up the server...');
+        setupDeferred.resolve();
+    });
+}
+else if(tempLibraries.length > config.parallelUploadCount)
+{
+    tempLibraries = tempLibraries.slice(0, config.parallelUploadCount);
+    console.log(tempLibraries);
+    setupDeferred.resolve();
+}
+else setupDeferred.resolve();
+
+
+// wait for initial setup
+setupDeferred.promise.then(function() {
+
+//check for saved temp libararies
+var tempLibraries = JSON.parse(fs.readFileSync('temp_libraries.json', 'utf8'));
+// Check if we need to create a new temp library
+if(tempLibraries.length < config.parallelUploadCount)
+{
+    for(var i = 0;i < (config.parallelUploadCount - tempLibraries);i++)
+    {
+        
+    }
 }
 
 function checkDuplicate(title, year, globData)
@@ -73,7 +147,7 @@ function shiftToMovieLibrary(file, title, year, sectionKey)
             reject(error);
         });
     }).then(function(xmlData) {
-        xmlToJSON(xmlData).then(function(sections) {
+        utils.xmlToJSON(xmlData).then(function(sections) {
             var mainLibrary = null;;
             for(var i = 0;i < sections.MediaContainer.Directory.length;i++)
             {
@@ -104,7 +178,7 @@ function checkMovieInLibrary(title, year, sectionKey)
 {
     console.log('In checkMovieInLibrary');
     return getMetadata(sectionKey).then(function(xmlData) {
-        return xmlToJSON(xmlData).then(function(globData) {
+        return utils.xmlToJSON(xmlData).then(function(globData) {
             var originalMedia = checkDuplicate(title, year, globData);
             var info = null;
             if(originalMedia)
@@ -189,7 +263,7 @@ function uploadMovie(newMedia)
 {
     var sectionKey = 1;
     return getMetadata(sectionKey).then(function(xmlData) {
-        return xmlToJSON(xmlData).then(function(globData) {
+        return utils.xmlToJSON(xmlData).then(function(globData) {
             var originalMedia = checkDuplicate(newMedia, globData);
             if(originalMedia)
                 return new Promise(function(resolve, reject) { reject('The media already exists.'); });
@@ -206,18 +280,7 @@ function uploadMovie(newMedia)
     });
 }
 
-function xmlToJSON(xmlData)
-{
-    return new Promise(function(resolve, reject) {
-        xml2js.parseString(xmlData, function(err, result) {
-            if(err)
-            {
-                reject("Error while parsing xml:" + err);
-            }
-            else resolve(result);
-        });
-    });
-}
+
 
 function getMetadata(libraryKey)
 {
@@ -243,14 +306,6 @@ function refreshLibrary(libraryKey) {
     });
 }
 
-function addDummyFile(name, dir)
-{
-    var type = pathUtils.extname(name);
-    var source = __dirname + "/samples/sample" + type;
-    var target = dir + "/" + name;
-    return copyFile(source, target);
-}
-
 var storage =   multer.diskStorage({
   destination: function (req, file, callback) {
     callback(null, './uploads');
@@ -263,38 +318,9 @@ var storage =   multer.diskStorage({
 
 var upload = multer({ storage : storage}).single('media');
 
-app.get('/', function(req, res) {
-    res.sendFile(__dirname + "/index.html");
-});
-
 app.get('/js/PlexUpload.js', function(req, res) {
     res.sendFile(__dirname + "/js/PlexUpload.js");
 });
-
-function createTempLibrary()
-{
-    return new Promise(function(resolve, reject) {
-        var timestamp = Date.now();
-        var dir = __dirname + "/library_folders/lib_" + timestamp;
-        fs.mkdirSync(dir);
-        var req = 'http://127.0.0.1:32400/library/sections?name=temp_' + timestamp + '&type=movie&agent=com.plexapp.agents.imdb&scanner=Plex%20Movie%20Scanner&language=en&importFromiTunes=&' + queryString.stringify({location: dir});
-        console.log(req);
-        request.post({url:req}, function(error, response, body) {
-            if(error)
-                reject('Error while creating temp library: ' + error);
-            else 
-                resolve({xml: body, dir: dir});
-        });
-    }).then(function(res) {
-        return xmlToJSON(res.xml).then(function(data) {
-            return new Promise(function(resolve, reject) { resolve({key: data.MediaContainer.Directory[0].$.key, dir: res.dir}); });
-        }, function(err) {
-            return new Promise(function(resolve, reject) { reject('Unable to process the response: ' + err); });
-        });
-    }, function(err) { 
-        return new Promise(function(resolve, reject) { reject(err); });
-    });
-}
 
 function deleteTempLibrary(sectionKey)
 {
@@ -323,6 +349,7 @@ function deleteFolderRecursive(path)
     });
 }
 
+
 app.post('/checkMovie', bodyParser.json(), function(req, res) {
     res.contentType('json');
     
@@ -331,7 +358,7 @@ app.post('/checkMovie', bodyParser.json(), function(req, res) {
     var fun = function(sectionKey, dir) {
         console.log('In Fun');
         var f_fun = fun.bind(null, sectionKey, dir);
-        getMetadata(sectionKey).then(xmlToJSON
+        getMetadata(sectionKey).then(utils.xmlToJSON
         , function(error) {
             console.log('ERROR: Could not retrieve temp library metadata. error: ' + error);
             res.send('Error');
@@ -419,6 +446,153 @@ app.post('/uploadMovie', upload, function(req, res) {
     });
 });
 
-app.listen(3000,function(){
+var server = app.listen(3000, function() {
     console.log("Working on port 3000");
+});
+const io = require('socket.io')(server);
+app.use(express.static('static'));
+
+var clients = {};
+var CMTokens = {count: 0};
+var CMRequests = [];
+
+var freeTempLibraries = [];
+for(var i = 0;i < tempLibraries.length;i++)
+    freeTempLibraries.push(tempLibraries[i]);
+
+function testFun2(request, tempLibrary)
+{
+    var sectionKey = tempLibrary.key;
+    var newMedia = null;
+    
+    console.log('In testFun2');
+    
+    return getMetadata(sectionKey).then(utils.xmlToJSON
+    , function(error) {
+        return new Promise(function(resolve, reject) { reject('ERROR: Could not retrieve temp library metadata. error: ' + error); });
+    }).then(function(jsonData) {
+        console.log('In Fun: received metadata ');
+        console.log(jsonData);
+        if(jsonData.MediaContainer.Video)
+        {
+            for(var i = 0;i < jsonData.MediaContainer.Video.length;i++)
+            {
+                if(pathUtils.basename(jsonData.MediaContainer.Video[i].Media[0].Part[0].$.file) == request.filename)
+                {
+                    newMedia = jsonData.MediaContainer.Video[i];
+                    break;
+                }
+            }  
+            console.log('In Fun: after media scan');
+            if(newMedia)
+            {
+                console.log('In Fun: found media scan');
+                return checkTempMovie(newMedia, sectionKey).then(function(info) {
+                    console.log("Success");
+                    console.log(info);
+                    return new Promise(function(resolve, reject) { resolve(info); });
+                }, function(error) {
+                    console.log(error);
+                    return new Promise(function(resolve, reject) { reject(error); });
+                });
+            }
+            else return utils.promiseWait(1000).then(function() {
+                return testFun2(request, tempLibrary);
+            });
+        }
+        else return utils.promiseWait(1000).then(function() {
+            return testFun2(request, tempLibrary);
+        });
+    }, function(error) {
+        return new Promise(function(resolve, reject) { reject(error); });
+    });
+}
+
+function testFun(request, tempLibrary)
+{
+    console.log('In testFun');
+    return utils.addDummyFile(request.filename, tempLibrary.dir).then(function() {
+        return refreshLibrary(tempLibrary.key).then(function() {
+            console.log('Calling testFun2...');
+            return testFun2(request, tempLibrary);
+        }, function() {
+            return new Promise(function(resolve, reject) { reject('ERROR: could not refresh temp movie library. error: ' + error); });
+        }).then(function(info) {
+            utils.deleteDummyFile(request.filename, tempLibrary.dir);
+            return new Promise(function(resolve, reject) { resolve(info); });
+        }, function(error) {
+            utils.deleteDummyFile(request.filename, tempLibrary.dir);
+            return new Promise(function(resolve, reject) { reject(error); });
+        });
+    }, function(error) {
+        return new Promise(function(resolve, reject) { reject('ERROR: could not copy sample file for name ' + request.filename); });
+    }).catch(function(err) { console.log(err); });
+}
+
+function acceptCMRequest()
+{
+    return new Promise(function(resolve, reject) {
+        if(freeTempLibraries.length > 0)
+        {
+            var request = null;
+            while(request == null && CMRequests.length > 0)
+            {
+                console.log('testing');
+                request = CMRequests.shift();
+                //check if the client is still connected
+                if(!clients[request.id])
+                    request == null;
+            }
+        
+            if(request == null)
+                resolve();
+            else 
+            {
+                //get free temp library
+                var tempLibrary = freeTempLibraries.shift();
+        
+                console.log('Request for ' + request.filename + ' sectionKey ' + tempLibrary.key);
+                testFun(request, tempLibrary).then(function(info) {
+                    console.log('Will return info...');
+                    console.log(request);
+                    var res = {index: request.index, info:info};
+                    console.log(info);
+                    freeTempLibraries.push(tempLibrary);
+                    clients[request.id].emit('CMAccept', res);
+                }, function(error) {
+                    console.log(error);
+                }).catch(function(err) { console.log(error); });
+        
+                setTimeout(acceptCheckMovieRequest, 200);
+                resolve();
+            }
+        }
+        else reject('Slots Full.');
+    });
+}
+
+// Set socket.io listeners.
+io.on('connection', (socket) => {
+    clients[socket.id] = socket;
+    console.log('a user connected');
+ 
+    socket.on('disconnect', () => {
+        console.log('user disconnected');
+        delete clients[socket.id];
+    });
+    
+    socket.on('checkMovieRequest', function(data) {
+        CMRequests.push({id: socket.id, filename: data.filename, index: data.index});
+        acceptCMRequest().then(function() {
+            socket.emit('CMReceived');
+        }, function(error) {
+            socket.emit('CMFull');
+        });
+    });
+});
+
+app.get('/', function(req, res) {
+    res.sendFile(__dirname + "/index.html");
+});
+
 });

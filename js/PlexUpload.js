@@ -2,6 +2,21 @@ $(document).ready(function(){
     var bar = $('.bar');
     var percent = $('.percent');
     var status = $('#status');
+    
+    var socket = io();
+
+    var nextCall = null;
+    
+    var currentIndex = 0;
+    
+    socket.on('CMAccept', function(res) {
+        console.log('response received.');
+        update(res);
+    });
+    
+    socket.on('CMReceived', function() {
+        nextCall();
+    });
        
     $('form').ajaxForm({
         beforeSend: function() {
@@ -185,6 +200,8 @@ $(document).ready(function(){
     
     function handleFileUpload(files, statusArr, i)
     {
+        currentIndex = i;
+        
         if(i < statusArr.length)
         {
             var file = files[i];
@@ -198,6 +215,8 @@ $(document).ready(function(){
                 handleFileUpload(files, statusArr, i + 1);
             }
             
+            socket.emit('checkMovieRequest', {filename: file.name, index: i});
+            /*
             $.ajax({
                 url: '/checkMovie',
                 method: "POST",
@@ -225,6 +244,7 @@ $(document).ready(function(){
                 },
                 async: true
             });
+            */
         }
     }
     
@@ -241,6 +261,34 @@ $(document).ready(function(){
             status.setFileNameSize(files[i].name, files[i].size);
             status.updateStatus('pending');
             statusArr.push(status);
+        }
+        
+        update = function(res) {
+            var data = res.info;
+            var status = statusArr[res.index];
+            var file = files[res.index];
+            
+            status.setThumbnail(data.thumb);
+            if(data.status == 'EXIST')
+            {
+                console.log("Movie " + data.name + " already exists.");
+                status.updateStatus('exist');
+                handleFileUpload(files, statusArr, currentIndex + 1);
+            }
+            else
+            {
+                var fd = new FormData();
+                fd.append('media', file);
+                fd.append('title', data.title);
+                fd.append('name', data.name);
+                fd.append('year', data.year);
+                sendFileToServer(fd, status, callNext);
+            }
+        }
+        
+        nextCall = function()
+        {
+            handleFileUpload(files, statusArr, currentIndex + 1);
         }
 
         handleFileUpload(files, statusArr, 0);
