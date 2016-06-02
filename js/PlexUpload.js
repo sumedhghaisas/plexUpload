@@ -5,17 +5,36 @@ $(document).ready(function(){
     
     var socket = io();
 
-    var nextCall = null;
+    var CMCall = null;
     
-    var currentIndex = 0;
+    var indices = [];
+    
+    var pfCount = 0;
+    var existCount = 0;
+    var uploadCount = 0;
+    var abortedCount = 0;
+    var unmatchedCount = 0;
     
     socket.on('CMAccept', function(res) {
         console.log('response received.');
         update(res);
     });
     
-    socket.on('CMReceived', function() {
-        nextCall();
+    socket.on('CMReceived', function(res) {
+        console.log('Calling next movie...');
+        CMStatusUpdate(res.index);
+        if(indices.length > 0)
+            CMCall(indices.shift());
+    });
+    
+    socket.on('CMFull', function(res) {
+        console.log('For index ' + res.index + ' bufffer full...');
+        indices.push(res.index);
+        if(indices.length > 0)
+        {
+            var f_nextCall = CMCall.bind(null, indices.shift());
+            setTimeout(f_nextCall, 2000);
+        }
     });
        
     $('form').ajaxForm({
@@ -117,14 +136,14 @@ $(document).ready(function(){
                 this.statusLabel.removeClass();
                 this.statusLabel.addClass('label label-warning');
                 this.statusbar.detach().appendTo($('#existFilesPanel'));
-                this.pendingFileEntry.hide();
+                existCount++;
+                $('#existCount').html(existCount);
             }
             else if(cStatus == 'upload')
             {
                 this.statusLabel.html('Uploading...');
                 this.statusLabel.removeClass();
                 this.statusLabel.addClass('label label-primary');
-                this.pendingFileEntry.hide();
             }
             else if(cStatus == 'aborted')
             {
@@ -139,17 +158,20 @@ $(document).ready(function(){
                 this.statusLabel.removeClass();
                 this.statusLabel.addClass('label label-success');
                 this.statusbar.appendTo($('#uploadFilesPanel'));
-                this.pendingFileEntry.hide();
             }
             else if(cStatus == 'checking')
             {
                 this.pendingFileEntry.hide();
+                pfCount--;
+                $('#pfCount').html(pfCount);
                 this.statusbar.appendTo($('#dragandrophandler'));
             }
             else if(cStatus == 'pending')
             {
                 this.pendingFileEntry.html(this.filenameText);
                 this.pendingFileEntry.show();
+                pfCount++;
+                $('#pfCount').html(pfCount);
             }
         }
 
@@ -200,51 +222,13 @@ $(document).ready(function(){
     
     function handleFileUpload(files, statusArr, i)
     {
-        currentIndex = i;
-        
         if(i < statusArr.length)
         {
             var file = files[i];
             var status = statusArr[i];
             var data = null;
             
-            status.updateStatus('checking');
-            
-            var callNext = function() { 
-                console.log('Upload Successful: ' + file.name); 
-                handleFileUpload(files, statusArr, i + 1);
-            }
-            
             socket.emit('checkMovieRequest', {filename: file.name, index: i});
-            /*
-            $.ajax({
-                url: '/checkMovie',
-                method: "POST",
-                contentType: 'application/json',
-                data: JSON.stringify({name: file.name}),
-                success: function(info) {
-                    data = info;
-                    
-                    status.setThumbnail(data.thumb);
-                    if(data.status == 'EXIST')
-                    {
-                        console.log("Movie " + data.name + " already exists.");
-                        status.updateStatus('exist');
-                        callNext();
-                    }
-                    else
-                    {
-                        var fd = new FormData();
-                        fd.append('media', file);
-                        fd.append('title', data.title);
-                        fd.append('name', data.name);
-                        fd.append('year', data.year);
-                        sendFileToServer(fd, status, callNext);
-                    }
-                },
-                async: true
-            });
-            */
         }
     }
     
@@ -261,6 +245,7 @@ $(document).ready(function(){
             status.setFileNameSize(files[i].name, files[i].size);
             status.updateStatus('pending');
             statusArr.push(status);
+            indices.push(i);
         }
         
         update = function(res) {
@@ -273,7 +258,6 @@ $(document).ready(function(){
             {
                 console.log("Movie " + data.name + " already exists.");
                 status.updateStatus('exist');
-                handleFileUpload(files, statusArr, currentIndex + 1);
             }
             else
             {
@@ -286,12 +270,17 @@ $(document).ready(function(){
             }
         }
         
-        nextCall = function()
+        CMCall = function(index)
         {
-            handleFileUpload(files, statusArr, currentIndex + 1);
+            handleFileUpload(files, statusArr, index);
+        }
+        
+        CMStatusUpdate = function(index)
+        {
+            statusArr[index].updateStatus('checking');
         }
 
-        handleFileUpload(files, statusArr, 0);
+        handleFileUpload(files, statusArr, indices.shift());
     }
     
     var folderInit = function(e) {

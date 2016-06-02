@@ -10,72 +10,29 @@ var util = require("util");
 var rmdir = require('rimraf');
 var q = require('q');
 var async = require('async');
+var logger = require('simple-node-logger');
 
 var utils = require('./utils.js');
+var plexUtils = require('./plexUtils.js');
 
 var setupDeferred = q.defer();
 
 var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 console.log('Initializing ' + config.parallelUploadCount + ' temp libraries...');
-var tempLibraries = JSON.parse(fs.readFileSync('temp_libraries.json', 'utf8'));
+plexUtils.tempLibraries = JSON.parse(fs.readFileSync('temp_libraries.json', 'utf8'));
 
-function createTempLibrary()
+if(plexUtils.tempLibraries.length < config.parallelUploadCount)
 {
-    return new Promise(function(resolve, reject) {
-        var timestamp = Date.now();
-        
-        var dir = __dirname + "/library_folders/lib_" + timestamp;
-        
-        console.log('Creating temp library: lib_' + timestamp + ' ...');
-        fs.mkdirSync(dir);
-        
-        var req = 'http://127.0.0.1:32400/library/sections?name=temp_' + timestamp + '&type=movie&agent=com.plexapp.agents.imdb&scanner=Plex%20Movie%20Scanner&language=en&importFromiTunes=&' + queryString.stringify({location: dir});
-        request.post({url:req}, function(error, response, body) {
-            if(error)
-                reject('Error while creating temp library: ' + error);
-            else 
-                resolve({xml: body, dir: dir});
-        });
-    }).then(function(res) {
-        return utils.xmlToJSON(res.xml).then(function(data) {
-            console.log('Successfully created temp library with key: ' + data.MediaContainer.Directory[0].$.key);
-            tempLibraries.push({key: data.MediaContainer.Directory[0].$.key, dir: res.dir});
-            return new Promise(function(resolve, reject) { resolve(); });
-        }, function(err) {
-            return new Promise(function(resolve, reject) { reject('Unable to process the response: ' + err); });
-        });
-    }, function(err) { 
-        return new Promise(function(resolve, reject) { reject(err); });
-    });
-}
-
-function createTempLibraries(count)
-{
-    var funcs = [];
-    for(var i = 0;i < count - 1;i++)
-        funcs.push(createTempLibrary);
-    
-    var result = createTempLibrary();
-    funcs.forEach(function (f) {
-        result = result.then(f);
-    });
-    
-    return result;
-}
-
-
-if(tempLibraries.length < config.parallelUploadCount)
-{
-    createTempLibraries(config.parallelUploadCount - tempLibraries.length).then(function() {
-        fs.writeFileSync('temp_libraries.json', JSON.stringify(tempLibraries));
+    createTempLibraries(config.parallelUploadCount - plexUtils.tempLibraries.length).then(function() {
+        fs.writeFileSync('temp_libraries.json', JSON.stringify(plexUtils.tempLibraries));
         console.log('Starting up the server...');
         setupDeferred.resolve();
     });
 }
-else if(tempLibraries.length > config.parallelUploadCount)
+else if(plexUtils.tempLibraries.length > config.parallelUploadCount)
 {
-    tempLibraries = tempLibraries.slice(0, config.parallelUploadCount);
-    console.log(tempLibraries);
+    plexUtils.tempLibraries = plexUtils.tempLibraries.slice(0, config.parallelUploadCount);
+    console.log(plexUtils.tempLibraries);
     setupDeferred.resolve();
 }
 else setupDeferred.resolve();
@@ -83,30 +40,6 @@ else setupDeferred.resolve();
 
 // wait for initial setup
 setupDeferred.promise.then(function() {
-
-//check for saved temp libararies
-var tempLibraries = JSON.parse(fs.readFileSync('temp_libraries.json', 'utf8'));
-// Check if we need to create a new temp library
-if(tempLibraries.length < config.parallelUploadCount)
-{
-    for(var i = 0;i < (config.parallelUploadCount - tempLibraries);i++)
-    {
-        
-    }
-}
-
-function checkDuplicate(title, year, globData)
-{
-    for(var i = 0;i < globData.MediaContainer.Video.length;i++)
-    {
-        var media = globData.MediaContainer.Video[i];
-        if(title == media.$.title && (year == media.$.year || year == undefined))
-        {
-            return media;
-        }
-    }
-    return null;
-}
 
 function shiftToLibraryFolder(file, folderPath, title, year)
 {
@@ -164,7 +97,7 @@ function shiftToMovieLibrary(file, title, year, sectionKey)
             var location = mainLibrary.Location[0].$.path;
             
             return shiftToLibraryFolder(__dirname + "/uploads/" + file, location, title, year).then(function() {
-                return refreshLibrary(1);
+                return plexUtils.refreshLibrary(1);
             }, function(error) {
                 return new Promise(function(resolve, reject) { reject(error); });
             });
@@ -174,41 +107,48 @@ function shiftToMovieLibrary(file, title, year, sectionKey)
     });
 }
 
-function checkMovieInLibrary(title, year, sectionKey)
+function checkMovieInLibrary(title, year, sectionKey, logFile)
 {
-    console.log('In checkMovieInLibrary');
-    return getMetadata(sectionKey).then(function(xmlData) {
+    logFile.debug('In checkMovieInLibrary');
+    return plexUtils.getMetadata(sectionKey).then(function(xmlData) {
         return utils.xmlToJSON(xmlData).then(function(globData) {
-            var originalMedia = checkDuplicate(title, year, globData);
+            logFile.debug('globData is');
+            logFile.debug(globData);
+            var originalMedia = utils.checkDuplicate(title, year, globData);
             var info = null;
             if(originalMedia)
             {
-                console.log('In checkMovieInLibrary: found media');
+                logFile.debug('In checkMovieInLibrary: found media');
                 info = {name: pathUtils.basename(originalMedia.Media[0].Part[0].$.file), title: originalMedia.$.title, thumb: originalMedia.$.thumb, year: originalMedia.$.year};
             }
-            console.log('In checkMovieInLibrary: returning promise');
-            console.log(info);
-            return new Promise(function(resolve, reject) { console.log('In promise'); resolve(info); });
+            logFile.debug('In checkMovieInLibrary: returning promise');
+            logFile.debug(info);
+            return new Promise(function(resolve, reject) { logFile.debug('In promise'); resolve(info); });
         }, function(error) {
             // error in XML parsing
-            console.log('error');
+            logFile.debug('error');
             return new Promise(function(resolve, reject) { reject(error); } );
         });
     }, function(error) {
-        console.log('error');
+        logFile.debug('error');
         return new Promise(function(resolve, reject) { reject('Could not fetch global metadata. ' + error); });
     });
 }
 
 function waitForMovieInLibrary(title, year, sectionKey)
 {
+    var tries = 5;
     return new Promise(function(resolve, reject) {
         var fun = function() {
             checkMovieInLibrary(title, year, sectionKey).then(function(info) {
                 if(info)
                     resolve(info);
-                else 
+                else if(tries > 0)
+                {
+                    tries--;
                     setTimeout(fun, 500);
+                }
+                else resolve(info);
             }, function(error) {
                 reject(error);
             });
@@ -218,20 +158,25 @@ function waitForMovieInLibrary(title, year, sectionKey)
     });
 }
 
-function waitForThumbAndYear(info, sectionKey)
+function waitForThumbAndYear(info, sectionKey, logFile)
 {
+    var tries = 5;
     return new Promise(function(resolve, reject) {
         if(info.thumb)
             resolve(info);
         else 
         {
             var fun = function() {
-                checkMovieInLibrary(info.title, info.year, sectionKey).then(function(res) {
-                    console.log(res);
+                checkMovieInLibrary(info.title, info.year, sectionKey, logFile).then(function(res) {
+                    logFile.debug(res);
                     if(res && res.thumb != undefined && res.year != undefined)
                         resolve(res);
-                    else 
+                    else if(tries > 5)
+                    {
+                        tries--;
                         setTimeout(fun, 1000);
+                    }
+                    else resolve(res);
                 }, function(error) {
                     reject(error);
                 });
@@ -242,19 +187,19 @@ function waitForThumbAndYear(info, sectionKey)
     });
 }
 
-function checkTempMovie(tempMedia, sectionKey)
+function checkTempMovie(tempMedia, sectionKey, logFile)
 {
-    console.log('in checkTempMovie');
-    return checkMovieInLibrary(tempMedia.$.title, tempMedia.$.year, 1).then(function(info) {
-        console.log('in checkTempMovie: returned ' + info);
+    logFile.debug('in checkTempMovie');
+    return checkMovieInLibrary(tempMedia.$.title, tempMedia.$.year, 1, logFile).then(function(info) {
+        logFile.debug('in checkTempMovie: returned ' + info);
         if(info)
         {
             info.status = 'EXIST';
         }
         else info = {name: pathUtils.basename(tempMedia.Media[0].Part[0].$.file), title: tempMedia.$.title, thumb: tempMedia.$.thumb, year: tempMedia.$.year, status: 'NEXIST'};
-        return waitForThumbAndYear(info, sectionKey);
+        return waitForThumbAndYear(info, sectionKey, logFile);
     }, function(error) {
-        console.log('in checkTempMovie: error: ' + error);
+        logFile.debug('in checkTempMovie: error: ' + error);
         return new Promise(function(resolve, reject) { reject(error); });
     });
 }
@@ -262,9 +207,9 @@ function checkTempMovie(tempMedia, sectionKey)
 function uploadMovie(newMedia)
 {
     var sectionKey = 1;
-    return getMetadata(sectionKey).then(function(xmlData) {
+    return plexUtils.getMetadata(sectionKey).then(function(xmlData) {
         return utils.xmlToJSON(xmlData).then(function(globData) {
-            var originalMedia = checkDuplicate(newMedia, globData);
+            var originalMedia = utils.checkDuplicate(newMedia, globData);
             if(originalMedia)
                 return new Promise(function(resolve, reject) { reject('The media already exists.'); });
             else 
@@ -280,38 +225,11 @@ function uploadMovie(newMedia)
     });
 }
 
-
-
-function getMetadata(libraryKey)
-{
-    return new Promise(function(resolve, reject) {
-        request('http://127.0.0.1:32400/library/sections/' + libraryKey + '/all', function (error, response, body) {
-            if (!error && response.statusCode == 200) {
-                resolve(response.body);
-            }
-            else reject(error);
-        });
-    });
-}
-
-function refreshLibrary(libraryKey) {
-    return new Promise(function(resolve, reject) {
-        request('http://127.0.0.1:32400/library/sections/' + libraryKey + '/refresh', function (error, response, body) {
-            if (!error && response.statusCode == 200) {
-                console.log("Library Successfully refreshed") // Print the google web page.
-                resolve('success');
-            }
-            else reject(error);
-        });
-    });
-}
-
 var storage =   multer.diskStorage({
   destination: function (req, file, callback) {
     callback(null, './uploads');
   },
   filename: function (req, file, callback) {
-    console.log(file);
     callback(null, file.originalname);
   }
 });
@@ -320,112 +238,6 @@ var upload = multer({ storage : storage}).single('media');
 
 app.get('/js/PlexUpload.js', function(req, res) {
     res.sendFile(__dirname + "/js/PlexUpload.js");
-});
-
-function deleteTempLibrary(sectionKey)
-{
-    console.log('deleting temp library...');
-    return new Promise(function(resolve, reject) {
-        request.delete('http://127.0.0.1:32400/library/sections/' + sectionKey, function (error, response, body) {
-            if(error)
-                reject('Error: not able to delete library with key ' + sectionKey + " : " + error);
-            else resolve();
-        });
-    });
-}
-
-function deleteFolderRecursive(path) 
-{
-    return new Promise(function(resolve, reject) { 
-        rmdir(path, function(error)
-        {
-            if(error)
-            {
-                console.log(error);
-                reject(error);
-            }
-            else resolve();
-        });
-    });
-}
-
-
-app.post('/checkMovie', bodyParser.json(), function(req, res) {
-    res.contentType('json');
-    
-    var newMedia = null;
-    
-    var fun = function(sectionKey, dir) {
-        console.log('In Fun');
-        var f_fun = fun.bind(null, sectionKey, dir);
-        getMetadata(sectionKey).then(utils.xmlToJSON
-        , function(error) {
-            console.log('ERROR: Could not retrieve temp library metadata. error: ' + error);
-            res.send('Error');
-            return new Promise(function(resolve, reject) { reject(); });
-        }).then(function(jsonData) {
-            console.log('In Fun: received metadata ' + jsonData);
-            for(var i = 0;i < jsonData.MediaContainer.Video.length;i++)
-            {
-                if(pathUtils.basename(jsonData.MediaContainer.Video[i].Media[0].Part[0].$.file) == req.body.name)
-                {
-                    newMedia = jsonData.MediaContainer.Video[i];
-                    break;
-                }
-            }  
-            console.log('In Fun: after media scan');
-            if(newMedia)
-            {
-                console.log('In Fun: found media scan');
-                checkTempMovie(newMedia, sectionKey).then(function(info) {
-                    console.log("Success");
-                    console.log(info);
-                    res.send(info);
-                    return new Promise(function(resolve, reject) { resolve(); });
-                }, function(error) {
-                    console.log(error);
-                    res.send("ERROR INTERNAL");
-                    return new Promise(function(resolve, reject) { resolve(); });
-                }).then(function() {
-                    deleteTempLibrary(sectionKey);
-                    deleteFolderRecursive(dir);
-                });;
-            }
-            else setTimeout(f_fun, 1000);
-            //return new Promise(function(resolve, reject) { reject(); });
-        }, function(error) {
-            // XML parsing failed.
-            console.log(error)
-            res.send('ERROR');
-            //return new Promise(function(resolve, reject) { resolve(); });
-        });
-    };
-    
-    createTempLibrary().then(function(data) {
-        console.log('testing');
-        console.log(data);
-        var f_fun = fun.bind(null, data.key, data.dir);
-        addDummyFile(req.body.name, data.dir).then(function() {
-            console.log('testing');
-            refreshLibrary(data.key).then(function() {
-                setTimeout(f_fun, 1000);
-                return new Promise(function(resolve, reject) { reject(); });
-            }, function() {
-                console.log('ERROR: could not refresh temp movie library. error: ' + error);
-                res.send('ERROR');
-                return new Promise(function(resolve, reject) { resolve(); });
-            }).then(function() {
-                deleteTempLibrary(data.key);
-                deleteFolderRecursive(data.dir);
-            });
-        }, function(error) {
-            console.log('ERROR: could not copy sample file for name ' + req.body.name);
-            res.send('ERROR');
-            return new Promise(function(resolve, reject) { resolve(); });
-        });
-    }, function(err) {
-        console.log(err);
-    })
 });
 
 app.post('/uploadMovie', upload, function(req, res) {
@@ -457,22 +269,22 @@ var CMTokens = {count: 0};
 var CMRequests = [];
 
 var freeTempLibraries = [];
-for(var i = 0;i < tempLibraries.length;i++)
-    freeTempLibraries.push(tempLibraries[i]);
+for(var i = 0;i < plexUtils.tempLibraries.length;i++)
+    freeTempLibraries.push(plexUtils.tempLibraries[i]);
 
-function testFun2(request, tempLibrary)
+function testFun2(request, tempLibrary, logFile)
 {
     var sectionKey = tempLibrary.key;
     var newMedia = null;
     
-    console.log('In testFun2');
+    logFile.debug('In testFun2');
     
-    return getMetadata(sectionKey).then(utils.xmlToJSON
+    return plexUtils.getMetadata(sectionKey).then(utils.xmlToJSON
     , function(error) {
         return new Promise(function(resolve, reject) { reject('ERROR: Could not retrieve temp library metadata. error: ' + error); });
     }).then(function(jsonData) {
-        console.log('In Fun: received metadata ');
-        console.log(jsonData);
+        logFile.debug('In Fun: received metadata ');
+        logFile.debug(jsonData);
         if(jsonData.MediaContainer.Video)
         {
             for(var i = 0;i < jsonData.MediaContainer.Video.length;i++)
@@ -483,38 +295,38 @@ function testFun2(request, tempLibrary)
                     break;
                 }
             }  
-            console.log('In Fun: after media scan');
+            logFile.debug('In Fun: after media scan');
             if(newMedia)
             {
-                console.log('In Fun: found media scan');
-                return checkTempMovie(newMedia, sectionKey).then(function(info) {
-                    console.log("Success");
-                    console.log(info);
+                logFile.info('Media identified with title: ' + newMedia.$.title);
+                logFile.debug('In Fun: found media scan');
+                return checkTempMovie(newMedia, sectionKey, logFile).then(function(info) {
+                    logFile.debug("Success");
+                    logFile.debug(info);
                     return new Promise(function(resolve, reject) { resolve(info); });
                 }, function(error) {
-                    console.log(error);
+                    logFile.debug(error);
                     return new Promise(function(resolve, reject) { reject(error); });
                 });
             }
             else return utils.promiseWait(1000).then(function() {
-                return testFun2(request, tempLibrary);
+                return testFun2(request, tempLibrary, logFile);
             });
         }
         else return utils.promiseWait(1000).then(function() {
-            return testFun2(request, tempLibrary);
+            return testFun2(request, tempLibrary, logFile);
         });
     }, function(error) {
         return new Promise(function(resolve, reject) { reject(error); });
     });
 }
 
-function testFun(request, tempLibrary)
+function testFun(request, tempLibrary, logFile)
 {
-    console.log('In testFun');
     return utils.addDummyFile(request.filename, tempLibrary.dir).then(function() {
-        return refreshLibrary(tempLibrary.key).then(function() {
-            console.log('Calling testFun2...');
-            return testFun2(request, tempLibrary);
+        return plexUtils.refreshLibrary(tempLibrary.key).then(function() {
+            logFile.debug('Calling testFun2...');
+            return testFun2(request, tempLibrary, logFile);
         }, function() {
             return new Promise(function(resolve, reject) { reject('ERROR: could not refresh temp movie library. error: ' + error); });
         }).then(function(info) {
@@ -526,48 +338,51 @@ function testFun(request, tempLibrary)
         });
     }, function(error) {
         return new Promise(function(resolve, reject) { reject('ERROR: could not copy sample file for name ' + request.filename); });
-    }).catch(function(err) { console.log(err); });
+    }).catch(function(err) { logFile.error(err); });
 }
 
-function acceptCMRequest()
+function acceptCMRequest(socket, data, logFile)
 {
     return new Promise(function(resolve, reject) {
+        logFile.info('Checking for slot...');
         if(freeTempLibraries.length > 0)
         {
+            CMRequests.push({id: socket.id, filename: data.filename, index: data.index});
+            resolve();
             var request = null;
             while(request == null && CMRequests.length > 0)
             {
-                console.log('testing');
                 request = CMRequests.shift();
                 //check if the client is still connected
                 if(!clients[request.id])
                     request == null;
             }
         
-            if(request == null)
-                resolve();
-            else 
+            if(request != null) 
             {
                 //get free temp library
                 var tempLibrary = freeTempLibraries.shift();
         
-                console.log('Request for ' + request.filename + ' sectionKey ' + tempLibrary.key);
-                testFun(request, tempLibrary).then(function(info) {
-                    console.log('Will return info...');
-                    console.log(request);
+                logFile.info('Request for ' + request.filename + ' with temp library key ' + tempLibrary.key);
+                testFun(request, tempLibrary, logFile).then(function(info) {
+                    logFile.info('Request satisfied. Sending the response through socket.');
+                    logFile.debug(request);
                     var res = {index: request.index, info:info};
-                    console.log(info);
+                    logFile.debug(info);
                     freeTempLibraries.push(tempLibrary);
                     clients[request.id].emit('CMAccept', res);
                 }, function(error) {
-                    console.log(error);
-                }).catch(function(err) { console.log(error); });
+                    logFile.error(error);
+                }).catch(function(err) { logFile.error(error); });
         
                 setTimeout(acceptCheckMovieRequest, 200);
-                resolve();
             }
         }
-        else reject('Slots Full.');
+        else 
+        {
+            logFile.info('Slots full.');
+            reject('Slots Full.');
+        }
     });
 }
 
@@ -582,11 +397,12 @@ io.on('connection', (socket) => {
     });
     
     socket.on('checkMovieRequest', function(data) {
-        CMRequests.push({id: socket.id, filename: data.filename, index: data.index});
-        acceptCMRequest().then(function() {
-            socket.emit('CMReceived');
+        var logFile = logger.createSimpleLogger(__dirname + '/logs/' + pathUtils.basename(data.filename) + '.log');
+        logFile.setLevel('debug');
+        acceptCMRequest(socket, data, logFile).then(function() {
+            socket.emit('CMReceived', {index: data.index});
         }, function(error) {
-            socket.emit('CMFull');
+            socket.emit('CMFull', {index: data.index});
         });
     });
 });
