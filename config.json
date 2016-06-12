@@ -1,4 +1,7 @@
 {
-    "MoviesSectionKey": "1",
-    "parallelUploadCount": "2" 
+    "MainPlexIP": "127.0.0.1",
+    "MainPlexPort": "32400",
+    "MovieSectionKey": "1",
+    "parallelCheckCount": "2" ,
+    "parallelUploadCount": "2"
 }
