@@ -18,9 +18,16 @@ $(document).ready(function(){
     var abortedCount = 0;
     var unmatchedCount = 0;
 
+    var update = null;
+    var updateUnmatched = null;
+
     socket.on('CMAccept', function(res) {
         console.log('response received.');
         update(res);
+    });
+
+    socket.on('CMUnmatched', function(res) {
+        updateUnmatched(res.index);
     });
 
     socket.on('CMReceived', function(res) {
@@ -171,7 +178,9 @@ $(document).ready(function(){
                 this.statusLabel.html('ABORTED');
                 this.statusLabel.removeClass();
                 this.statusLabel.addClass('label label-danger');
-                this.statusbar.appendTo($('#abortedFiles'));
+                this.statusbar.detach().appendTo($('#abortedFiles'));
+                abortedCount++;
+                $('#abortedCount').html(abortedCount);
             }
             else if(cStatus == 'uploaded')
             {
@@ -179,6 +188,8 @@ $(document).ready(function(){
                 this.statusLabel.removeClass();
                 this.statusLabel.addClass('label label-success');
                 this.statusbar.appendTo($('#uploadFilesPanel'));
+                uploadCount++;
+                $('#uploadCount').html(uploadCount);
             }
             else if(cStatus == 'checking')
             {
@@ -193,6 +204,12 @@ $(document).ready(function(){
                 this.pendingFileEntry.show();
                 pfCount++;
                 $('#pfCount').html(pfCount);
+            }
+            else if(cStatus == 'unmatched')
+            {
+                this.statusbar.detach().appendTo($('#unmatchedFilesPanel'));
+                unmatchedCount++;
+                $('#unmatchedCount').html(unmatchedCount);
             }
         }
 
@@ -232,11 +249,12 @@ $(document).ready(function(){
         this.setAbort = function(jqxhr)
         {
             var sb = this.statusbar;
+            var _this = this;
             this.abort.click(function()
             {
-                this.endUpload();
+                _this.endUpload();
                 jqxhr.abort();
-                this.updateStatus('aborted');
+                _this.updateStatus('aborted');
             });
         }
     }
@@ -320,6 +338,11 @@ $(document).ready(function(){
         CMStatusUpdate = function(index)
         {
             statusArr[index].updateStatus('checking');
+        }
+
+        updateUnmatched = function(index)
+        {
+            statusArr[index].updateStatus('unmatched');
         }
 
         handleFileUpload(files, statusArr, indices.shift());

@@ -1,59 +1,54 @@
-14:29:51.463 INFO  Checking for slot... 
-14:29:51.465 INFO  Request for Ant-Man (2015) 1080p BluRay [DayT.se].mp4 will be satisfied with temp library key 97 
-14:29:51.463 INFO  Check Movie Request with filename Ant-Man (2015) 1080p BluRay [DayT.se].mp4 accepted. 
-14:29:51.486 INFO  Sample file placed in temp library. 
-14:29:51.500 INFO  Temp library (97) refreshed successfully. 
-14:29:51.500 INFO  Getting metadata for library 97 
-14:29:51.522 INFO  Checking if metadata for file "Ant-Man (2015) 1080p BluRay [DayT.se].mp4" is fetched... 
-14:29:51.522 INFO  Could not fetch metadata for file. 
-14:29:51.522 INFO  Sending the request again... 
-14:29:56.524 INFO  Getting metadata for library 97 
-14:29:56.534 INFO  Checking if metadata for file "Ant-Man (2015) 1080p BluRay [DayT.se].mp4" is fetched... 
-14:29:56.534 INFO  Media identified with title: Ant-Man 
-14:29:56.534 INFO  Checking movie "Ant-Man"(undefined) in main library(1)... 
-14:29:56.535 INFO  Getting metadata for library 1 
-14:29:56.627 INFO  Assigning NEXIST status. 
-14:29:56.627 INFO  Wait for movie:"Ant-Man" in library 97 for thumb and year. 
-14:29:56.628 INFO  Waiting for year and thumb for movie Ant-Man 
-14:29:56.628 INFO  Getting metadata for library 97 
-14:29:56.636 INFO  Found media. 
-14:29:56.636 INFO  Info object is [object Object] 
-14:29:56.637 INFO  Thumb and year not fetched. Making another call... 
-14:30:01.636 INFO  Waiting for year and thumb for movie Ant-Man 
-14:30:01.636 INFO  Getting metadata for library 97 
-14:30:01.663 INFO  Found media. 
-14:30:01.663 INFO  Info object is [object Object] 
-14:30:01.664 INFO  Thumb and year fetch. Returning the result... 
-14:30:01.717 INFO  Request satisfied. Sending the response through socket. 
-14:37:26.447 INFO  Checking for slot... 
-14:37:26.450 INFO  Request for Ant-Man (2015) 1080p BluRay [DayT.se].mp4 will be satisfied with temp library key 97 
-14:37:26.447 INFO  Check Movie Request with filename Ant-Man (2015) 1080p BluRay [DayT.se].mp4 accepted. 
-14:37:26.459 INFO  Sample file placed in temp library. 
-14:37:26.470 INFO  Temp library (97) refreshed successfully. 
-14:37:26.470 INFO  Getting metadata for library 97 
-14:37:26.490 INFO  Checking if metadata for file "Ant-Man (2015) 1080p BluRay [DayT.se].mp4" is fetched... 
-14:37:26.490 INFO  Could not fetch metadata for file. 
-14:37:26.490 INFO  Sending the request again... 
-14:37:31.490 INFO  Getting metadata for library 97 
-14:37:31.515 INFO  Checking if metadata for file "Ant-Man (2015) 1080p BluRay [DayT.se].mp4" is fetched... 
-14:37:31.515 INFO  Media identified with title: Ant-Man 
-14:37:31.515 INFO  Checking movie "Ant-Man"(undefined) in main library(1)... 
-14:37:31.516 INFO  Getting metadata for library 1 
-14:37:31.607 INFO  Assigning NEXIST status. 
-14:37:31.607 INFO  Wait for movie:"Ant-Man" in library 97 for thumb and year. 
-14:37:31.607 INFO  Waiting for year and thumb for movie Ant-Man 
-14:37:31.607 INFO  Getting metadata for library 97 
-14:37:31.615 INFO  Found media. 
-14:37:31.615 INFO  Info object is [object Object] 
-14:37:31.615 INFO  Thumb and year not fetched. Making another call... 
-14:37:36.617 INFO  Waiting for year and thumb for movie Ant-Man 
-14:37:36.617 INFO  Getting metadata for library 97 
-14:37:36.628 INFO  Found media. 
-14:37:36.628 INFO  Info object is [object Object] 
-14:37:36.628 INFO  Thumb and year not fetched. Making another call... 
-14:37:41.628 INFO  Waiting for year and thumb for movie Ant-Man 
-14:37:41.628 INFO  Getting metadata for library 97 
-14:37:41.651 INFO  Found media. 
-14:37:41.652 INFO  Info object is [object Object] 
-14:37:41.652 INFO  Thumb and year fetch. Returning the result... 
-14:37:41.703 INFO  Request satisfied. Sending the response through socket. 
+17:27:11.931 INFO  Checking for slot... 
+17:27:11.933 INFO  Request for Ant-Man (2015) 1080p BluRay [DayT.se].mp4 will be satisfied with temp library key 98 
+17:27:11.931 INFO  Check Movie Request with filename Ant-Man (2015) 1080p BluRay [DayT.se].mp4 accepted. 
+17:27:12.008 INFO  Sample file placed in temp library. 
+17:27:12.021 INFO  Temp library (98) refreshed successfully. 
+17:27:12.021 INFO  Getting metadata for library 98 
+17:27:12.033 INFO  Checking if metadata for file "Ant-Man (2015) 1080p BluRay [DayT.se].mp4" is fetched... 
+17:27:12.033 INFO  Could not fetch metadata for file. 
+17:27:12.033 INFO  Sending the request again... 
+17:27:17.033 INFO  Getting metadata for library 98 
+17:27:17.056 INFO  Checking if metadata for file "Ant-Man (2015) 1080p BluRay [DayT.se].mp4" is fetched... 
+17:27:17.056 INFO  Media identified with title: Ant-Man 
+17:27:17.056 INFO  Checking movie "Ant-Man"(undefined) in main library(1)... 
+17:27:17.056 INFO  Getting metadata for library 1 
+17:27:17.162 INFO  Assigning NEXIST status. 
+17:27:17.162 INFO  Wait for movie:"Ant-Man" in library 98 for thumb and year. 
+17:27:17.162 INFO  Waiting for year and thumb for movie Ant-Man (try 7) 
+17:27:17.162 INFO  Getting metadata for library 98 
+17:27:17.173 INFO  Found media. 
+17:27:17.173 INFO  Info object is [object Object] 
+17:27:17.173 INFO  Thumb and year not fetched. Making another call... 
+17:27:22.174 INFO  Waiting for year and thumb for movie Ant-Man (try 6) 
+17:27:22.174 INFO  Getting metadata for library 98 
+17:27:22.204 INFO  Found media. 
+17:27:22.204 INFO  Info object is [object Object] 
+17:27:22.205 INFO  Thumb and year fetch. Returning the result... 
+17:27:22.280 INFO  Request satisfied. Sending the response through socket. 
+17:31:23.408 INFO  Checking for slot... 
+17:31:23.408 INFO  Check Movie Request with filename Ant-Man (2015) 1080p BluRay [DayT.se].mp4 accepted. 
+17:31:23.409 INFO  Request for Ant-Man (2015) 1080p BluRay [DayT.se].mp4 will be satisfied with temp library key 98 
+17:31:23.430 INFO  Sample file placed in temp library. 
+17:31:23.443 INFO  Temp library (98) refreshed successfully. 
+17:31:23.443 INFO  Getting metadata for library 98 
+17:31:23.466 INFO  Checking if metadata for file "Ant-Man (2015) 1080p BluRay [DayT.se].mp4" is fetched... 
+17:31:23.466 INFO  Could not fetch metadata for file. 
+17:31:23.466 INFO  Sending the request again... 
+17:31:28.468 INFO  Getting metadata for library 98 
+17:31:28.483 INFO  Checking if metadata for file "Ant-Man (2015) 1080p BluRay [DayT.se].mp4" is fetched... 
+17:31:28.483 INFO  Media identified with title: Ant-Man 
+17:31:28.483 INFO  Checking movie "Ant-Man"(undefined) in main library(1)... 
+17:31:28.483 INFO  Getting metadata for library 1 
+17:31:28.607 INFO  Assigning NEXIST status. 
+17:31:28.607 INFO  Wait for movie:"Ant-Man" in library 98 for thumb and year. 
+17:31:28.607 INFO  Waiting for year and thumb for movie Ant-Man (try 7) 
+17:31:28.607 INFO  Getting metadata for library 98 
+17:31:28.616 INFO  Found media. 
+17:31:28.616 INFO  Info object is [object Object] 
+17:31:28.616 INFO  Thumb and year not fetched. Making another call... 
+17:31:33.617 INFO  Waiting for year and thumb for movie Ant-Man (try 6) 
+17:31:33.617 INFO  Getting metadata for library 98 
+17:31:33.641 INFO  Found media. 
+17:31:33.642 INFO  Info object is [object Object] 
+17:31:33.642 INFO  Thumb and year fetch. Returning the result... 
+17:31:33.702 INFO  Request satisfied. Sending the response through socket. 

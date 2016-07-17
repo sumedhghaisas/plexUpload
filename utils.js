@@ -89,7 +89,7 @@ module.exports = {
                 })
 
                 res.on('end', function(){
-                    fs.writeFile("./movieThumbs/" + info.title, imagedata, 'binary', function(err){
+                    fs.writeFile("./movieThumbs/" + info.title + '.jpg', imagedata, 'binary', function(err){
                         resolve();
                     })
                 })

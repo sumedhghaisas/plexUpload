@@ -157,8 +157,10 @@ module.exports = {
                 {
                     logFile.info('Movie not found. Making another call...');
                     _this.waitMovieDeferred.resolve();
-                    return utils.promiseWait(5000).then(function() {
-                        return _this.waitForMovieInLibrary(title, year, sectionKey, logFile);
+                    return _this.refreshLibrary(sectionKey).then(function() {
+                        utils.promiseWait(20000).then(function() {
+                            return _this.waitForMovieInLibrary(title, year, sectionKey, logFile);
+                        });
                     });
                 }
             }, function(error) {
@@ -168,10 +170,10 @@ module.exports = {
         });
     },
 
-    waitForThumbAndYear: function(info, sectionKey, logFile)
+    waitForThumbAndYear: function(info, sectionKey, logFile, tries)
     {
         var _this = this;
-        logFile.info('Waiting for year and thumb for movie ' + info.title);
+        logFile.info('Waiting for year and thumb for movie ' + info.title + " (try " + tries + ')');
         return _this.checkMovieInLibrary(info.title, info.year, sectionKey, logFile).then(function(res) {
             if(!res)
             {
@@ -186,7 +188,16 @@ module.exports = {
             else
             {
                 logFile.info('Thumb and year not fetched. Making another call...');
-                return utils.promiseWait(5000).then(function() { return _this.waitForThumbAndYear(info, sectionKey, logFile)});
+                if(res.year == undefined)
+                    tries--;
+                if(tries > 0)
+                {
+                    return utils.promiseWait(5000).then(function()
+                    {
+                        return _this.waitForThumbAndYear(info, sectionKey, logFile, tries);
+                    });
+                }
+                else return new Promise(function(resolve, reject) { resolve(null); })
             }
         }, function(error) {
             return new Promise(function(resolve, reject) { reject(error)});

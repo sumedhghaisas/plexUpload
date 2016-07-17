@@ -1,86 +1,93 @@
 <html>
 <head>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
-<script src="http://malsup.github.com/jquery.form.js"></script>
-<script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+  <script src="http://malsup.github.com/jquery.form.js"></script>
+  <script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>
 
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
-<script src="js/PlexUpload.js"></script>
-<style>
-body { padding: 30px }
-form { display: block; margin: 20px auto; background: #eee; border-radius: 10px; padding: 15px }
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+  <script src="js/PlexUpload.js"></script>
+  <style>
+    body { padding: 30px }
+    form { display: block; margin: 20px auto; background: #eee; border-radius: 10px; padding: 15px }
 
-.progress { position:relative; width:400px; border: 1px solid #ddd; padding: 1px; border-radius: 3px; }
-.bar { background-color: #B4F5B4; width:0%; height:20px; border-radius: 3px; }
-.percent { position:absolute; display:inline-block; top:3px; left:48%; }
-</style>
+    .progress { position:relative; width:400px; border: 1px solid #ddd; padding: 1px; border-radius: 3px; }
+    .bar { background-color: #B4F5B4; width:0%; height:20px; border-radius: 3px; }
+    .percent { position:absolute; display:inline-block; top:3px; left:48%; }
+  </style>
 </head>
 
 <body>
 
 <div class="container theme-showcase">
-<div class="jumbotron">
+  <div class="jumbotron">
     <h1>Plex Uploader</h1>
     <p>Upload movies</p>
-</div>
+  </div>
 
-<div class="folderUpload">
+  <div class="folderUpload">
     <span>Upload</span>
     <input type="file" class="file" id="dir_input" webkitdirectory="" directory="">
-</div>
-
-<br/><br/>
-
-<div class="panel panel-default">
-  <div class="panel-heading">
-    <h3 class="panel-title">Files in progress...</h3>
   </div>
-  <div class="panel-body" id="dragandrophandler">
-  </div>
-</div>
 
-<!-- Nav tabs -->
-<ul class="nav nav-tabs" role="tablist">
-  <li class="nav-item">
-    <a class="nav-link active" data-toggle="tab" href="#pendingFiles" role="tab">Pending Files <span id="pfCount" class="badge">0</span></a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" data-toggle="tab" href="#existFiles" role="tab">Exist <span id="existCount" class="badge">0</span></a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" data-toggle="tab" href="#uploadFiles" role="tab">Uploaded <span id="uploadCount" class="badge">0</span></a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" data-toggle="tab" href="#abortedFiles" role="tab">Aborted <span id="abortedCount" class="badge">0</span></a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" data-toggle="tab" href="#unmatchedFiles" role="tab">Unmatched <span id="unmatchedCount" class="badge">0</span></a>
-  </li>
-</ul>
+  <br/><br/>
 
-<!-- Tab panes -->
-<div class="tab-content">
-  <div class="tab-pane active" id="pendingFiles" role="tabpanel">
-    <ul id="pendingFilesList" class="list-group">
-      
-    </ul>
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">Files in progress...</h3>
+    </div>
+    <div class="panel-body" id="dragandrophandler">
+    </div>
   </div>
-  <div class="tab-pane" id="existFiles" role="tabpanel">
-    <div class="panel panel-default">
-      <div class="panel-body" id="existFilesPanel">
+
+  <!-- Nav tabs -->
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" data-toggle="tab" href="#pendingFiles" role="tab">Pending Files <span id="pfCount" class="badge">0</span></a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-toggle="tab" href="#existFiles" role="tab">Exist <span id="existCount" class="badge">0</span></a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-toggle="tab" href="#uploadFiles" role="tab">Uploaded <span id="uploadCount" class="badge">0</span></a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-toggle="tab" href="#abortedFiles" role="tab">Aborted <span id="abortedCount" class="badge">0</span></a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-toggle="tab" href="#unmatchedFiles" role="tab">Unmatched <span id="unmatchedCount" class="badge">0</span></a>
+    </li>
+  </ul>
+
+  <!-- Tab panes -->
+  <div class="tab-content">
+    <div class="tab-pane active" id="pendingFiles" role="tabpanel">
+      <div class="panel panel-default">
+        <ul id="pendingFilesList" class="list-group">
+
+        </ul>
+      </div>
+    </div>
+    <div class="tab-pane" id="existFiles" role="tabpanel">
+      <div class="panel panel-default">
+        <div class="panel-body" id="existFilesPanel">
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane" id="uploadFiles" role="tabpanel">
+      <div class="panel panel-default">
+        <div class="panel-body" id="uploadFilesPanel">
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane" id="abortedFiles" role="tabpanel">...</div>
+    <div class="tab-pane" id="unmatchedFiles" role="tabpanel">
+      <div class="panel panel-default">
+        <div class="panel-body" id="unmatchedFilesPanel">
+        </div>
       </div>
     </div>
   </div>
-  <div class="tab-pane" id="uploadFiles" role="tabpanel">
-    <div class="panel panel-default">
-      <div class="panel-body" id="uploadFilesPanel">
-      </div>
-    </div>
-  </div>
-  <div class="tab-pane" id="abortedFiles" role="tabpanel">...</div>
-  <div class="tab-pane" id="unmatchedFiles" role="tabpanel">...</div>
-</div>
 
 </div>
 </body>

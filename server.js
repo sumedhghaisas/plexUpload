@@ -120,8 +120,11 @@ setupDeferred.promise.then(function() {
         res.sendFile(__dirname + "/js/PlexUpload.js");
     });
 
-    app.post('/uploadMovie', upload, function(req, res) {
-
+    app.post('/uploadMovie', upload, function(req, res)
+    {
+        req.on('close', function(){
+            console.log('Client closed the connection');
+        });
         var logFile = logger.createSimpleLogger(__dirname + '/logs/' + pathUtils.basename(req.body.title) + '_U.log');
         logFile.info('Shifting file to library folder: ' + mainLibraryPath);
         utils.shiftToLibraryFolder(__dirname + "/uploads/" + req.body.name, mainLibraryPath, req.body.title, req.body.year).
@@ -225,16 +228,24 @@ setupDeferred.promise.then(function() {
                     logFile = logger.createSimpleLogger(__dirname + '/logs/' + pathUtils.basename(request.filename) + '_CM.log');
                     logFile.info('Request for ' + request.filename + ' will be satisfied with temp library key ' + tempLibrary.key);
                     checkMovie.checkRequest(request, tempLibrary, logFile).then(function (info) {
-                        logFile.info('Request satisfied. Sending the response through socket.');
-                        var res = {index: request.index, info: info};
-                        logFile.debug(info);
-                        freeTempLibraries.push(tempLibrary);
-                        logFile.debug(info.thumb);
-                        utils.fetchImage('http://127.0.0.1:32400' + info.thumb, info, logFile).then(function (base64Img) {
-                            clients[request.id].emit('CMAccept', res);
-                        }, function (error) {
-                            logFile.error(error);
-                        });
+                        if(info)
+                        {
+                            logFile.info('Request satisfied. Sending the response through socket.');
+                            var res = {index: request.index, info: info};
+                            logFile.debug(info);
+                            freeTempLibraries.push(tempLibrary);
+                            logFile.debug(info.thumb);
+                            utils.fetchImage('http://127.0.0.1:32400' + info.thumb, info, logFile).then(function (base64Img) {
+                                clients[request.id].emit('CMAccept', res);
+                            }, function (error) {
+                                logFile.error(error);
+                            });
+                        }
+                        else
+                        {
+                            logFile.info('Could not find metadata for the file ' + request.filename);
+                            clients[request.id].emit('CMUnmatched', {index: request.index});
+                        }
                     }, function (error) {
                         logFile.error(error);
                     });
